@@ -84,11 +84,15 @@ Version::~Version() {
     }
   }
 }
-
+//此函数为在某层的文件数组中，查找某key可能存在于哪个文件，并返回此文件索引
+//但此函数并不会真的确定此key在要查找结果中，只是确定此key只有可能在此文件中
+//其实就是此key小于或等于此文件的最大key（largest），调用者需要自己再判断此key
+//是不是大于或等于此文件的最小key(smallest)
 int FindFile(const InternalKeyComparator& icmp,
              const std::vector<FileMetaData*>& files, const Slice& key) {
   uint32_t left = 0;
   uint32_t right = files.size();
+  //二分法在某层的文件（肯定是有序的）中，查找key
   while (left < right) {
     uint32_t mid = (left + right) / 2;
     const FileMetaData* f = files[mid];
@@ -341,16 +345,23 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
   std::vector<FileMetaData*> tmp;
   FileMetaData* tmp2;
   for (int level = 0; level < config::kNumLevels; level++) {
+    //一层层地查找
     size_t num_files = files_[level].size();
     if (num_files == 0) continue;
 
     // Get the list of files to search in this level
     FileMetaData* const* files = &files_[level][0];
     if (level == 0) {
+      //0层文件会有重复的数据
       // Level-0 files may overlap each other.  Find all files that
       // overlap user_key and process them in order from newest to oldest.
+      //申请num_files个空间
       tmp.reserve(num_files);
       for (uint32_t i = 0; i < num_files; i++) {
+        //遍历0层的所有文件，
+        //如果存在相等的key（即大于或等于此文件的最小key(smallest);
+        //且小于或等于此文件的最大key（largest)），
+        //则将此文件存放到tmp中
         FileMetaData* f = files[i];
         if (ucmp->Compare(user_key, f->smallest.user_key()) >= 0 &&
             ucmp->Compare(user_key, f->largest.user_key()) <= 0) {
@@ -359,10 +370,13 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
       }
       if (tmp.empty()) continue;
 
+      //按NewestFirst顺序排序
       std::sort(tmp.begin(), tmp.end(), NewestFirst);
+      //把找到的文件存放起来
       files = &tmp[0];
       num_files = tmp.size();
     } else {
+      //非0层文件
       // Binary search to find earliest index whose largest key >= ikey.
       uint32_t index = FindFile(vset_->icmp_, files_[level], ikey);
       if (index >= num_files) {
@@ -372,6 +386,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
         tmp2 = files[index];
         if (ucmp->Compare(user_key, tmp2->smallest.user_key()) < 0) {
           // All of "tmp2" is past any data for user_key
+          //确定此key存在于此文件中tmp2
           files = nullptr;
           num_files = 0;
         } else {
@@ -382,6 +397,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
     }
 
     for (uint32_t i = 0; i < num_files; ++i) {
+      //主要是level 0层文件可能有多个查找结果，所以需要循环
       if (last_file_read != nullptr && stats->seek_file == nullptr) {
         // We have had more than one seek for this read.  Charge the 1st file.
         stats->seek_file = last_file_read;
@@ -406,6 +422,7 @@ Status Version::Get(const ReadOptions& options, const LookupKey& k,
         case kNotFound:
           break;  // Keep searching in other files
         case kFound:
+          //真的找到了key,返回成功
           return s;
         case kDeleted:
           s = Status::NotFound(Slice());  // Use empty error message for speed
@@ -892,6 +909,7 @@ Status VersionSet::Recover(bool* save_manifest) {
   };
 
   // Read "CURRENT" file, which contains a pointer to the current manifest file
+  //读取CURRENT文件，此文件中存储着当前manifest文件的文件名
   std::string current;
   Status s = ReadFileToString(env_, CurrentFileName(dbname_), &current);
   if (!s.ok()) {
@@ -930,8 +948,11 @@ Status VersionSet::Recover(bool* save_manifest) {
                        0 /*initial_offset*/);
     Slice record;
     std::string scratch;
+    //manifest文件中的格式和Log文件中的格式一样
+    //在这依次读取每条Record
     while (reader.ReadRecord(&record, &scratch) && s.ok()) {
       VersionEdit edit;
+      //把每条record反解析成VersionEdit
       s = edit.DecodeFrom(record);
       if (s.ok()) {
         if (edit.has_comparator_ &&

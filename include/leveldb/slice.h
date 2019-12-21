@@ -25,6 +25,10 @@
 
 namespace leveldb {
 
+/*
+对char*封装了一次的字符串类
+代码非常简单
+ */
 class LEVELDB_EXPORT Slice {
  public:
   // Create an empty slice.

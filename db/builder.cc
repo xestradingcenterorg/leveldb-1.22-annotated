@@ -17,9 +17,12 @@ namespace leveldb {
 Status BuildTable(const std::string& dbname, Env* env, const Options& options,
                   TableCache* table_cache, Iterator* iter, FileMetaData* meta) {
   Status s;
+  //文件大小设置为0
   meta->file_size = 0;
+  //迭代器初始到头部
   iter->SeekToFirst();
 
+  //生成文件名
   std::string fname = TableFileName(dbname, meta->number);
   if (iter->Valid()) {
     WritableFile* file;
@@ -29,9 +32,12 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
     }
 
     TableBuilder* builder = new TableBuilder(options, file);
+    //把最小的key存在smallest中
     meta->smallest.DecodeFrom(iter->key());
+    //遍历整个跳表
     for (; iter->Valid(); iter->Next()) {
       Slice key = iter->key();
+      //把最大的key存在largest中
       meta->largest.DecodeFrom(key);
       builder->Add(key, iter->value());
     }
@@ -71,6 +77,7 @@ Status BuildTable(const std::string& dbname, Env* env, const Options& options,
   if (s.ok() && meta->file_size > 0) {
     // Keep it
   } else {
+    //操作失败 删除文件
     env->DeleteFile(fname);
   }
   return s;

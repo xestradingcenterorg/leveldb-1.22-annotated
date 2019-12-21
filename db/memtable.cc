@@ -28,6 +28,7 @@ size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }
 int MemTable::KeyComparator::operator()(const char* aptr,
                                         const char* bptr) const {
   // Internal keys are encoded as length-prefixed strings.
+  //取到的key 并不是单纯的key 是key+序列号+操作类型
   Slice a = GetLengthPrefixedSlice(aptr);
   Slice b = GetLengthPrefixedSlice(bptr);
   return comparator.Compare(a, b);
@@ -82,6 +83,7 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   size_t key_size = key.size();
   size_t val_size = value.size();
   size_t internal_key_size = key_size + 8;
+  //8个bytes 其中7个是序列号（版本号），1个是操作类型（Put或Delete)
   const size_t encoded_len = VarintLength(internal_key_size) +
                              internal_key_size + VarintLength(val_size) +
                              val_size;
@@ -96,12 +98,14 @@ void MemTable::Add(SequenceNumber s, ValueType type, const Slice& key,
   assert(p + val_size == buf + encoded_len);
   table_.Insert(buf);
 }
-
+//在mem中查找某个key
 bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
   Slice memkey = key.memtable_key();
   Table::Iterator iter(&table_);
+  //查找key
   iter.Seek(memkey.data());
   if (iter.Valid()) {
+    //如果找到了Node（等于要找的key的Node，或者是大于此key的Node）
     // entry format is:
     //    klength  varint32
     //    userkey  char[klength]
@@ -116,6 +120,7 @@ bool MemTable::Get(const LookupKey& key, std::string* value, Status* s) {
     const char* key_ptr = GetVarint32Ptr(entry, entry + 5, &key_length);
     if (comparator_.comparator.user_comparator()->Compare(
             Slice(key_ptr, key_length - 8), key.user_key()) == 0) {
+      //确实是找到了等于此key的Node
       // Correct user key
       const uint64_t tag = DecodeFixed64(key_ptr + key_length - 8);
       switch (static_cast<ValueType>(tag & 0xff)) {

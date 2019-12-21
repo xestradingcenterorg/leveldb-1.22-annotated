@@ -175,6 +175,8 @@ inline bool ParseInternalKey(const Slice& internal_key,
 }
 
 // A helper class useful for DBImpl::Get()
+
+//一个用于Get操作的class，把key，版本号编码一下
 class LookupKey {
  public:
   // Initialize *this for looking up user_key at a snapshot with
@@ -206,6 +208,8 @@ class LookupKey {
   const char* start_;
   const char* kstart_;
   const char* end_;
+  //对于短点的key，数据直接存在space_中，避免申请动态内存
+  //如果space_中装不下，则申请动态内存
   char space_[200];  // Avoid allocation for short keys
 };
 

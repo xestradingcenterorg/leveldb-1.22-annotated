@@ -60,6 +60,7 @@ class SkipList {
   bool Contains(const Key& key) const;
 
   // Iteration over the contents of a skip list
+  //用于跳表的迭代器
   class Iterator {
    public:
     // Initialize an iterator over the specified list.
@@ -99,6 +100,7 @@ class SkipList {
   };
 
  private:
+ //跳表最高层级为12层
   enum { kMaxHeight = 12 };
 
   inline int GetMaxHeight() const {
@@ -259,6 +261,7 @@ bool SkipList<Key, Comparator>::KeyIsAfterNode(const Key& key, Node* n) const {
 
 template <typename Key, class Comparator>
 typename SkipList<Key, Comparator>::Node*
+//在当前跳表中查找是否已存在此key或者找到大于此key的第一个Node
 SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
                                               Node** prev) const {
   Node* x = head_;
@@ -266,11 +269,13 @@ SkipList<Key, Comparator>::FindGreaterOrEqual(const Key& key,
   while (true) {
     Node* next = x->Next(level);
     if (KeyIsAfterNode(key, next)) {
+      //当前next的key小于key
       // Keep searching in this list
       x = next;
     } else {
       if (prev != nullptr) prev[level] = x;
       if (level == 0) {
+        //找到了最低层的的链接中第一个大于key的那个node
         return next;
       } else {
         // Switch to next list
@@ -341,8 +346,10 @@ void SkipList<Key, Comparator>::Insert(const Key& key) {
   Node* x = FindGreaterOrEqual(key, prev);
 
   // Our data structure does not allow duplicate insertion
+  //如果找到的x值存在的话 那么必须不等于key 也就是不允许重复插入
   assert(x == nullptr || !Equal(key, x->key));
 
+  //随机生成height
   int height = RandomHeight();
   if (height > GetMaxHeight()) {
     for (int i = GetMaxHeight(); i < height; i++) {

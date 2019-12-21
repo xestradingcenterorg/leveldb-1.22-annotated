@@ -24,6 +24,7 @@
 namespace leveldb {
 
 // WriteBatch header has an 8-byte sequence number followed by a 4-byte count.
+//一次写入的数据的头部最小值 为8个字节的序列号和4个字节的长度 也就是12字节
 static const size_t kHeader = 12;
 
 WriteBatch::WriteBatch() { Clear(); }
@@ -39,32 +40,41 @@ void WriteBatch::Clear() {
 
 size_t WriteBatch::ApproximateSize() const { return rep_.size(); }
 
+//正式写入内存
 Status WriteBatch::Iterate(Handler* handler) const {
   Slice input(rep_);
   if (input.size() < kHeader) {
+    //数据异常
     return Status::Corruption("malformed WriteBatch (too small)");
   }
 
+  //把头部摘除
   input.remove_prefix(kHeader);
   Slice key, value;
   int found = 0;
   while (!input.empty()) {
     found++;
     char tag = input[0];
+    //移除操作类型字段（标志此操作是Put还是Delete的字段） 也就是tag
     input.remove_prefix(1);
     switch (tag) {
       case kTypeValue:
+      //Put操作
         if (GetLengthPrefixedSlice(&input, &key) &&
             GetLengthPrefixedSlice(&input, &value)) {
+              //获得key和value
           handler->Put(key, value);
         } else {
+          //数据异常
           return Status::Corruption("bad WriteBatch Put");
         }
         break;
       case kTypeDeletion:
+      //Delete操作
         if (GetLengthPrefixedSlice(&input, &key)) {
           handler->Delete(key);
         } else {
+          //数据异常
           return Status::Corruption("bad WriteBatch Delete");
         }
         break;
@@ -78,30 +88,31 @@ Status WriteBatch::Iterate(Handler* handler) const {
     return Status::OK();
   }
 }
-
+//读取Batch中的操作条数，即为读取rep_中的第8到第11个字节
 int WriteBatchInternal::Count(const WriteBatch* b) {
   return DecodeFixed32(b->rep_.data() + 8);
 }
-
+//设置Batch中的操作个数，即为设置rep_中的第8到第11个字节
 void WriteBatchInternal::SetCount(WriteBatch* b, int n) {
   EncodeFixed32(&b->rep_[8], n);
 }
-
+//读取Batch中的版本号，即为读取rep_中的前8个字节
 SequenceNumber WriteBatchInternal::Sequence(const WriteBatch* b) {
   return SequenceNumber(DecodeFixed64(b->rep_.data()));
 }
-
+//设置Batch中的版本号，即为设置rep_中的前8个字节
 void WriteBatchInternal::SetSequence(WriteBatch* b, SequenceNumber seq) {
   EncodeFixed64(&b->rep_[0], seq);
 }
 
+//真正的把key-value Put到mem_中
 void WriteBatch::Put(const Slice& key, const Slice& value) {
   WriteBatchInternal::SetCount(this, WriteBatchInternal::Count(this) + 1);
-  rep_.push_back(static_cast<char>(kTypeValue));
+  rep_.push_back(static_cast<char>(kTypeValue));//Put操作
   PutLengthPrefixedSlice(&rep_, key);
   PutLengthPrefixedSlice(&rep_, value);
 }
-
+//真正的把key 从mem_中Delete
 void WriteBatch::Delete(const Slice& key) {
   WriteBatchInternal::SetCount(this, WriteBatchInternal::Count(this) + 1);
   rep_.push_back(static_cast<char>(kTypeDeletion));
@@ -131,7 +142,9 @@ class MemTableInserter : public WriteBatch::Handler {
 
 Status WriteBatchInternal::InsertInto(const WriteBatch* b, MemTable* memtable) {
   MemTableInserter inserter;
+  //此次插件的版本号
   inserter.sequence_ = WriteBatchInternal::Sequence(b);
+  //被写入的空间
   inserter.mem_ = memtable;
   return b->Iterate(&inserter);
 }

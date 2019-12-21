@@ -44,6 +44,7 @@ void PutFixed64(std::string* dst, uint64_t value) {
   dst->append(buf, sizeof(buf));
 }
 
+//生成uint32大小的Varint编码
 char* EncodeVarint32(char* dst, uint32_t v) {
   // Operate on characters as unsigneds
   unsigned char* ptr = reinterpret_cast<unsigned char*>(dst);
@@ -112,6 +113,7 @@ int VarintLength(uint64_t v) {
 const char* GetVarint32PtrFallback(const char* p, const char* limit,
                                    uint32_t* value) {
   uint32_t result = 0;
+  //每次左移7个字节，最多移动5次，即此value虽然是32bits的，其实占用bytes可能是5个
   for (uint32_t shift = 0; shift <= 28 && p < limit; shift += 7) {
     uint32_t byte = *(reinterpret_cast<const unsigned char*>(p));
     p++;
@@ -126,10 +128,11 @@ const char* GetVarint32PtrFallback(const char* p, const char* limit,
   }
   return nullptr;
 }
-
+//取出一个32bits的uint，编码为Varint
 bool GetVarint32(Slice* input, uint32_t* value) {
   const char* p = input->data();
   const char* limit = p + input->size();
+  //计算value的值
   const char* q = GetVarint32Ptr(p, limit, value);
   if (q == nullptr) {
     return false;
@@ -180,8 +183,10 @@ const char* GetLengthPrefixedSlice(const char* p, const char* limit,
 
 bool GetLengthPrefixedSlice(Slice* input, Slice* result) {
   uint32_t len;
+  //获得长度成功len，且剩下的data长度大于或等于当前len
   if (GetVarint32(input, &len) && input->size() >= len) {
     *result = Slice(input->data(), len);
+    //原始数据移除此操作的数据
     input->remove_prefix(len);
     return true;
   } else {

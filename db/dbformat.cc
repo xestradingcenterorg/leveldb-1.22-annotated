@@ -120,6 +120,8 @@ bool InternalFilterPolicy::KeyMayMatch(const Slice& key, const Slice& f) const {
 
 LookupKey::LookupKey(const Slice& user_key, SequenceNumber s) {
   size_t usize = user_key.size();
+  //13是5+8，5是一个varint32，来记录key的长度+8（这个8就是5+8中的8），
+  //8则是一个fixed64，用来存储序列号+操作类型，在PackSequenceAndType方法中完成
   size_t needed = usize + 13;  // A conservative estimate
   char* dst;
   if (needed <= sizeof(space_)) {

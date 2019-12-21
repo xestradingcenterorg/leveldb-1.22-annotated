@@ -30,6 +30,10 @@ namespace leveldb {
 
 class Slice;
 
+/*
+批量写入的工具的class
+数据主要存储在req_中
+ */
 class LEVELDB_EXPORT WriteBatch {
  public:
   class LEVELDB_EXPORT Handler {
@@ -75,6 +79,32 @@ class LEVELDB_EXPORT WriteBatch {
  private:
   friend class WriteBatchInternal;
 
+  /*
+  用来存储数据 有自己的格式
+
+  格式为
+  前8个bytes 存储版本号
+  接下来4个bytes 存储此batch中的key-val对数
+
+  接下来的数据存储 按以下格式循环，循环次数即为key-val对数
+  [
+      开头1个byte 如果此byte为1，则说明此操作为put操作
+      接下来的格式依次为：
+      [
+        4个bytes，存储key的长度
+        key的内容
+        4个bytes，存储value的长度
+        value的内容
+      ]，
+      开头1个byte 如果此byte为0，则说明此操作为delete操作
+      接下来的格式依次为：
+      [
+        4个bytes，存储key的长度
+        key的内容
+      ]
+  ]
+
+   */
   std::string rep_;  // See comment in write_batch.cc for the format of rep_
 };
 

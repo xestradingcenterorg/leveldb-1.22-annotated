@@ -46,9 +46,11 @@ struct LEVELDB_EXPORT Options {
   const Comparator* comparator;
 
   // If true, the database will be created if it is missing.
+  //如果此值为真 打开一个DB时，如果DB不存在，则直接创建此DB 
   bool create_if_missing = false;
 
   // If true, an error is raised if the database already exists.
+  //如果此值为真 打开一个DB时，如果DB已存在，则直接报错 
   bool error_if_exists = false;
 
   // If true, the implementation will do aggressive checking of the
