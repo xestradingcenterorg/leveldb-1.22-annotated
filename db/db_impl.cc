@@ -292,8 +292,10 @@ Status DBImpl::Recover(VersionEdit* edit, bool* save_manifest) {
 
   if (!env_->FileExists(CurrentFileName(dbname_))) {
     //如果CURRENT文件不存在
-    if (options_.create_if_missing) {//文件不存在则创建
-      s = NewDB();//创建DB
+    if (options_.create_if_missing) {
+      //文件不存在则创建
+      s = NewDB();
+      //创建DB
       if (!s.ok()) {
         return s;
       }
@@ -1202,9 +1204,12 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 //写入方法
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* updates) {
   Writer w(&mutex_);
-  w.batch = updates;//要写入的数据
-  w.sync = options.sync;//是否立刻刷到磁盘
-  w.done = false;//写入未完成
+  w.batch = updates;
+  //要写入的数据
+  w.sync = options.sync;
+  //是否立刻刷到磁盘
+  w.done = false;
+  //写入未完成
 
   MutexLock l(&mutex_);
   writers_.push_back(&w);

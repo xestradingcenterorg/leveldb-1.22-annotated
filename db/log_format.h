@@ -1,3 +1,10 @@
+/*
+ * @Author: lichanglin@100tal.com
+ * @Date: 2019-12-21 21:18:55
+ * @LastEditors: lichanglin@100tal.com
+ * @LastEditTime: 2019-12-22 13:30:44
+ * @Description: 
+ */
 // Copyright (c) 2011 The LevelDB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
@@ -23,12 +30,16 @@ enum RecordType {
   // Zero is reserved for preallocated files
   kZeroType = 0,
 
-  kFullType = 1,//此record包含整块数据 也就是此块数据只存在于1个record中
+  kFullType = 1,
+  //此record包含整块数据 也就是此块数据只存在于1个record中
 
   // For fragments
-  kFirstType = 2,//此record为第一块record
-  kMiddleType = 3,//此record为中间的某块record
-  kLastType = 4//此record为最后一块record
+  kFirstType = 2,
+  //此record为第一块record
+  kMiddleType = 3,
+  //此record为中间的某块record
+  kLastType = 4
+  //此record为最后一块record
 };
 static const int kMaxRecordType = kLastType;
 
